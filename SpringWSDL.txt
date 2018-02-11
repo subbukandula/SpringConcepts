@@ -1,5 +1,10 @@
 Remember that I goal is to use SOAP::Lite to send SOAP 1.2 request to the xmlme.com server.
 
+Just to close this, it turns out the error I was seeing is due to the fact that I needed to add the jaxp-ri jar 
+For Sun JVM's, that jar is built in so the classes are found. That's not 
+true for the IBM JDK so you need to add them into your application 
+classloader.
+
 Before writing the client program, let's compare the SOAP 1.1 request with the SOAP 1.2 request provided at: http://www.xmlme.com/WSShakespeare.asmx?op=GetSpeech.
 
 SOAP 1.1 request: 
