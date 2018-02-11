@@ -45,3 +45,21 @@ SOAP 1.2 uses "application/soap+xml" as Content-Type and SOAP 1.1 uses "text/xml
 SOAP 1.2 does not use SOAPAction header line.
 SOAP 1.2 uses "http://www.w3.org/2003/05/soap-envelope" as the envolope namespace and SOAP 1.1 uses "http://schemas.xmlsoap.org/soap/envelope/".
 Now I known where to pay attention to generate a correct SOAP 1.2 request
+
+
+
+
+<?xml version="1.1" encoding="UTF-8"?>
+<webservices version="1.2"
+  xmlns="http://www.jboss.com/xml/ns/javaee"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.jboss.com/xml/ns/javaee">
+  <property>
+    <name>wsdl.soapAddress.rewrite.wsdl-uri-scheme</name>
+    <value>https</value>
+  </property>
+  <property>
+    <name>wsdl.soapAddress.rewrite.wsdl-host</name>
+    <value>foo</value>
+  </property>
+</webservices>
