@@ -1,0 +1,47 @@
+Remember that I goal is to use SOAP::Lite to send SOAP 1.2 request to the xmlme.com server.
+
+Before writing the client program, let's compare the SOAP 1.1 request with the SOAP 1.2 request provided at: http://www.xmlme.com/WSShakespeare.asmx?op=GetSpeech.
+
+SOAP 1.1 request: 
+
+POST /WSShakespeare.asmx HTTP/1.1
+Host: www.xmlme.com
+Content-Type: text/xml; charset=utf-8
+Content-Length: length
+SOAPAction: "http://xmlme.com/WebServices/GetSpeech"
+
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <GetSpeech xmlns="http://xmlme.com/WebServices">
+      <Request>string</Request>
+    </GetSpeech>
+  </soap:Body>
+</soap:Envelope>
+
+
+SOAP 1.2 request:
+
+POST /WSShakespeare.asmx HTTP/1.1
+Host: www.xmlme.com
+Content-Type: application/soap+xml; charset=utf-8
+Content-Length: length
+
+<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <GetSpeech xmlns="http://xmlme.com/WebServices">
+      <Request>string</Request>
+    </GetSpeech>
+  </soap12:Body>
+</soap12:Envelope>
+I see 3 differences:
+
+SOAP 1.2 uses "application/soap+xml" as Content-Type and SOAP 1.1 uses "text/xml".
+SOAP 1.2 does not use SOAPAction header line.
+SOAP 1.2 uses "http://www.w3.org/2003/05/soap-envelope" as the envolope namespace and SOAP 1.1 uses "http://schemas.xmlsoap.org/soap/envelope/".
+Now I known where to pay attention to generate a correct SOAP 1.2 request
