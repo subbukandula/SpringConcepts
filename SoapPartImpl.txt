@@ -1,0 +1,802 @@
+ Save This PageHome » Open-JDK-6.b17-src » com.sun.xml.internal.messaging » saaj » soap » [javadoc | source]
+    1   /*
+    2    * Copyright 2005-2006 Sun Microsystems, Inc.  All Rights Reserved.
+    3    * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+    4    *
+    5    * This code is free software; you can redistribute it and/or modify it
+    6    * under the terms of the GNU General Public License version 2 only, as
+    7    * published by the Free Software Foundation.  Sun designates this
+    8    * particular file as subject to the "Classpath" exception as provided
+    9    * by Sun in the LICENSE file that accompanied this code.
+   10    *
+   11    * This code is distributed in the hope that it will be useful, but WITHOUT
+   12    * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+   13    * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+   14    * version 2 for more details (a copy is included in the LICENSE file that
+   15    * accompanied this code).
+   16    *
+   17    * You should have received a copy of the GNU General Public License version
+   18    * 2 along with this work; if not, write to the Free Software Foundation,
+   19    * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+   20    *
+   21    * Please contact Sun Microsystems, Inc., 4150 Network Circle, Santa Clara,
+   22    * CA 95054 USA or visit www.sun.com if you need additional information or
+   23    * have any questions.
+   24    */
+   25   
+   26   
+   27   package com.sun.xml.internal.messaging.saaj.soap;
+   28   
+   29   import java.io;
+   30   import java.util.Iterator;
+   31   import java.util.logging.Logger;
+   32   import java.util.logging.Level;
+   33   
+   34   import javax.activation.DataHandler;
+   35   import javax.activation.DataSource;
+   36   import javax.xml.soap;
+   37   import javax.xml.transform.Source;
+   38   import javax.xml.transform.stream.StreamSource;
+   39   
+   40   import org.w3c.dom;
+   41   
+   42   import com.sun.xml.internal.messaging.saaj.packaging.mime.internet.MimeBodyPart;
+   43   
+   44   import com.sun.xml.internal.messaging.saaj.SOAPExceptionImpl;
+   45   import com.sun.xml.internal.messaging.saaj.soap.impl.ElementImpl;
+   46   import com.sun.xml.internal.messaging.saaj.soap.impl.EnvelopeImpl;
+   47   import com.sun.xml.internal.messaging.saaj.soap.name.NameImpl;
+   48   import com.sun.xml.internal.messaging.saaj.util;
+   49   import javax.xml.transform.sax.SAXSource;
+   50   
+   51   /**
+   52    * SOAPPartImpl is the first attachment. This contains the XML/SOAP document.
+   53    *
+   54    * @author Anil Vijendran (anil@sun.com)
+   55    */
+   56   public abstract class SOAPPartImpl extends SOAPPart implements SOAPDocument {
+   57       protected static final Logger log =
+   58           Logger.getLogger(LogDomainConstants.SOAP_DOMAIN,
+   59                            "com.sun.xml.internal.messaging.saaj.soap.LocalStrings");
+   60   
+   61       protected MimeHeaders headers;
+   62       protected Envelope envelope;
+   63       protected Source source;
+   64       protected SOAPDocumentImpl document;
+   65   
+   66       //flag to indicate if a setContent happened.
+   67       private boolean sourceWasSet = false;
+   68   
+   69       // Records whether the input source had an xml decl or not.
+   70       protected boolean omitXmlDecl = true;
+   71   
+   72       // Records the charset encoding of the input stream source if provided.
+   73       protected String sourceCharsetEncoding = null;
+   74   
+   75       /**
+   76        * Reference to containing message (may be null)
+   77        */
+   78       protected MessageImpl message;
+   79   
+   80       protected SOAPPartImpl() {
+   81           this(null);
+   82       }
+   83   
+   84       protected SOAPPartImpl(MessageImpl message) {
+   85           document = new SOAPDocumentImpl(this);
+   86           headers = new MimeHeaders();
+   87           this.message = message;
+   88           headers.setHeader("Content-Type", getContentType());
+   89       }
+   90   
+   91       protected abstract String getContentType();
+   92       protected abstract Envelope createEnvelopeFromSource()
+   93       throws SOAPException;
+   94       protected abstract Envelope createEmptyEnvelope(String prefix)
+   95       throws SOAPException;
+   96       protected abstract SOAPPartImpl duplicateType();
+   97   
+   98       protected String getContentTypeString() {
+   99           return getContentType();
+  100       }
+  101   
+  102       public boolean isFastInfoset() {
+  103           return (message != null) ? message.isFastInfoset() : false;
+  104       }
+  105   
+  106       public SOAPEnvelope getEnvelope() throws SOAPException {
+  107   
+  108           // If there is no SOAP envelope already created, then create
+  109           // one from a source if one exists. If there is a newer source
+  110           // then use that source.
+  111   
+  112           if (sourceWasSet)
+  113                 sourceWasSet = false;
+  114   
+  115           lookForEnvelope();
+  116           if (envelope != null) {
+  117               if (source != null) { // there's a newer source, use it
+  118                   document.removeChild(envelope);
+  119                   envelope = createEnvelopeFromSource();
+  120               }
+  121           } else if (source != null) {
+  122               envelope = createEnvelopeFromSource();
+  123           } else {
+  124               envelope = createEmptyEnvelope(null);
+  125               document.insertBefore(envelope, null);
+  126           }
+  127           return envelope;
+  128       }
+  129   
+  130       protected void lookForEnvelope() throws SOAPException {
+  131           Element envelopeChildElement = document.doGetDocumentElement();
+  132           if (envelopeChildElement == null || envelopeChildElement instanceof Envelope) {
+  133               envelope = (EnvelopeImpl) envelopeChildElement;
+  134           } else if (!(envelopeChildElement instanceof ElementImpl)) {
+  135               log.severe("SAAJ0512.soap.incorrect.factory.used");
+  136               throw new SOAPExceptionImpl("Unable to create envelope: incorrect factory used during tree construction");
+  137           } else {
+  138               ElementImpl soapElement = (ElementImpl) envelopeChildElement;
+  139               if (soapElement.getLocalName().equalsIgnoreCase("Envelope")) {
+  140                   String prefix = soapElement.getPrefix();
+  141                   String uri = (prefix == null) ? soapElement.getNamespaceURI() : soapElement.getNamespaceURI(prefix);
+  142                   if(!uri.equals(NameImpl.SOAP11_NAMESPACE) && !uri.equals(NameImpl.SOAP12_NAMESPACE)) {
+  143                       log.severe("SAAJ0513.soap.unknown.ns");
+  144                       throw new SOAPVersionMismatchException("Unable to create envelope from given source because the namespace was not recognized");
+  145                   }
+  146               } else {
+  147                   log.severe("SAAJ0514.soap.root.elem.not.named.envelope");
+  148                   throw new SOAPExceptionImpl(
+  149                       "Unable to create envelope from given source because the root element is not named \"Envelope\"");
+  150               }
+  151           }
+  152       }
+  153   
+  154       public void removeAllMimeHeaders() {
+  155           headers.removeAllHeaders();
+  156       }
+  157   
+  158       public void removeMimeHeader(String header) {
+  159           headers.removeHeader(header);
+  160       }
+  161   
+  162       public String[] getMimeHeader(String name) {
+  163           return headers.getHeader(name);
+  164       }
+  165   
+  166       public void setMimeHeader(String name, String value) {
+  167           headers.setHeader(name, value);
+  168       }
+  169   
+  170       public void addMimeHeader(String name, String value) {
+  171           headers.addHeader(name, value);
+  172       }
+  173   
+  174       public Iterator getAllMimeHeaders() {
+  175           return headers.getAllHeaders();
+  176       }
+  177   
+  178       public Iterator getMatchingMimeHeaders(String[] names) {
+  179           return headers.getMatchingHeaders(names);
+  180       }
+  181   
+  182       public Iterator getNonMatchingMimeHeaders(String[] names) {
+  183           return headers.getNonMatchingHeaders(names);
+  184       }
+  185   
+  186       public Source getContent() throws SOAPException {
+  187           if (source != null) {
+  188               InputStream bis = null;
+  189               if (source instanceof JAXMStreamSource) {
+  190                   StreamSource streamSource = (StreamSource)source;
+  191                   bis = streamSource.getInputStream();
+  192               } else if (FastInfosetReflection.isFastInfosetSource(source)) {
+  193                   // FastInfosetSource inherits from SAXSource
+  194                   SAXSource saxSource = (SAXSource)source;
+  195                   bis = saxSource.getInputSource().getByteStream();
+  196               }
+  197   
+  198               if (bis != null) {
+  199                   try {
+  200                       bis.reset();
+  201                   } catch (IOException e) {
+  202                       /* This exception will never be thrown.
+  203                        *
+  204                        * The setContent method will modify the source
+  205                        * if StreamSource to JAXMStreamSource, that uses
+  206                        * a ByteInputStream, and for a FastInfosetSource will
+  207                        * replace the InputStream with a ByteInputStream.
+  208                        */
+  209                   }
+  210               }
+  211               return source;
+  212           }
+  213   
+  214           return ((Envelope) getEnvelope()).getContent();
+  215       }
+  216   
+  217       public void setContent(Source source) throws SOAPException {
+  218           try {
+  219               if (source instanceof StreamSource) {
+  220                   InputStream is = ((StreamSource) source).getInputStream();
+  221                   Reader rdr = ((StreamSource) source).getReader();
+  222   
+  223                   if (is != null) {
+  224                       this.source = new JAXMStreamSource(is);
+  225                   } else if (rdr != null) {
+  226                       this.source = new JAXMStreamSource(rdr);
+  227                   } else {
+  228                       log.severe("SAAJ0544.soap.no.valid.reader.for.src");
+  229                       throw new SOAPExceptionImpl("Source does not have a valid Reader or InputStream");
+  230                   }
+  231               }
+  232               else if (FastInfosetReflection.isFastInfosetSource(source)) {
+  233                   // InputStream is = source.getInputStream()
+  234                   InputStream is = FastInfosetReflection.FastInfosetSource_getInputStream(source);
+  235   
+  236                   /*
+  237                    * Underlying stream must be ByteInputStream for getContentAsStream(). We pay the
+  238                    * cost of copying the underlying bytes here to avoid multiple copies every time
+  239                    * getBytes() is called on a ByteInputStream.
+  240                    */
+  241                   if (!(is instanceof ByteInputStream)) {
+  242                       ByteOutputStream bout = new ByteOutputStream();
+  243                       bout.write(is);
+  244   
+  245                       // source.setInputStream(new ByteInputStream(...))
+  246                       FastInfosetReflection.FastInfosetSource_setInputStream(
+  247                           source, bout.newInputStream());
+  248                   }
+  249                   this.source = source;
+  250               }
+  251               else {
+  252                   this.source = source;
+  253               }
+  254               sourceWasSet = true;
+  255           }
+  256           catch (Exception ex) {
+  257               ex.printStackTrace();
+  258   
+  259               log.severe("SAAJ0545.soap.cannot.set.src.for.part");
+  260               throw new SOAPExceptionImpl(
+  261               "Error setting the source for SOAPPart: " + ex.getMessage());
+  262           }
+  263       }
+  264   
+  265       public ByteInputStream getContentAsStream() throws IOException {
+  266           if (source != null) {
+  267               InputStream is = null;
+  268   
+  269               // Allow message to be transcode if so requested
+  270               if (source instanceof StreamSource && !isFastInfoset()) {
+  271                   is = ((StreamSource) source).getInputStream();
+  272               }
+  273               else if (FastInfosetReflection.isFastInfosetSource(source) &&
+  274                   isFastInfoset())
+  275               {
+  276                   try {
+  277                       // InputStream is = source.getInputStream()
+  278                       is = FastInfosetReflection.FastInfosetSource_getInputStream(source);
+  279                   }
+  280                   catch (Exception e) {
+  281                       throw new IOException(e.toString());
+  282                   }
+  283               }
+  284   
+  285               if (is != null) {
+  286                   if (!(is instanceof ByteInputStream)) {
+  287                       log.severe("SAAJ0546.soap.stream.incorrect.type");
+  288                       throw new IOException("Internal error: stream not of the right type");
+  289                   }
+  290                   return (ByteInputStream) is;
+  291               }
+  292               // need to do something here for reader...
+  293               // for now we'll see if we can fallback...
+  294           }
+  295   
+  296           ByteOutputStream b = new ByteOutputStream();
+  297   
+  298           Envelope env = null;
+  299   
+  300           try {
+  301               env = (Envelope) getEnvelope();
+  302               env.output(b, isFastInfoset());
+  303           }
+  304           catch (SOAPException soapException) {
+  305               log.severe("SAAJ0547.soap.cannot.externalize");
+  306               throw new SOAPIOException(
+  307               "SOAP exception while trying to externalize: ",
+  308               soapException);
+  309           }
+  310   
+  311           return b.newInputStream();
+  312       }
+  313   
+  314       MimeBodyPart getMimePart() throws SOAPException {
+  315           try {
+  316               MimeBodyPart headerEnvelope = new MimeBodyPart();
+  317   
+  318               headerEnvelope.setDataHandler(getDataHandler());
+  319               AttachmentPartImpl.copyMimeHeaders(headers, headerEnvelope);
+  320   
+  321               return headerEnvelope;
+  322           } catch (SOAPException ex) {
+  323               throw ex;
+  324           } catch (Exception ex) {
+  325               log.severe("SAAJ0548.soap.cannot.externalize.hdr");
+  326               throw new SOAPExceptionImpl("Unable to externalize header", ex);
+  327           }
+  328       }
+  329   
+  330       MimeHeaders getMimeHeaders() {
+  331           return headers;
+  332       }
+  333   
+  334       DataHandler getDataHandler() {
+  335           DataSource ds = new DataSource() {
+  336               public OutputStream getOutputStream() throws IOException {
+  337                   throw new IOException("Illegal Operation");
+  338               }
+  339   
+  340               public String getContentType() {
+  341                   return getContentTypeString();
+  342               }
+  343   
+  344               public String getName() {
+  345                   return getContentId();
+  346               }
+  347   
+  348               public InputStream getInputStream() throws IOException {
+  349                   return getContentAsStream();
+  350               }
+  351           };
+  352           return new DataHandler(ds);
+  353       }
+  354   
+  355       public SOAPDocumentImpl getDocument() {
+  356           handleNewSource();
+  357           return document;
+  358       }
+  359   
+  360       public SOAPPartImpl getSOAPPart() {
+  361           return this;
+  362       }
+  363   
+  364       public DocumentType getDoctype() {
+  365           return document.getDoctype();
+  366       }
+  367   
+  368       // Forward all of these calls to the document to ensure that they work the
+  369       // same way whether they are called from here or directly from the document.
+  370       // If the document needs any help from this SOAPPart then
+  371       // Make it use a call-back as in doGetDocumentElement() below
+  372       public DOMImplementation getImplementation() {
+  373           return document.getImplementation();
+  374       }
+  375   
+  376       public Element getDocumentElement() {
+  377           // If there is no SOAP envelope already created, then create
+  378           // one from a source if one exists. If there is a newer source
+  379           // then use that source.
+  380           try {
+  381               getEnvelope();
+  382           } catch (SOAPException e) {
+  383           }
+  384           return document.getDocumentElement();
+  385       }
+  386   
+  387       protected void doGetDocumentElement() {
+  388           handleNewSource();
+  389           try {
+  390               lookForEnvelope();
+  391           } catch (SOAPException e) {
+  392           }
+  393       }
+  394   
+  395       public Element createElement(String tagName) throws DOMException {
+  396           return document.createElement(tagName);
+  397       }
+  398   
+  399       public DocumentFragment createDocumentFragment() {
+  400           return document.createDocumentFragment();
+  401       }
+  402   
+  403       public org.w3c.dom.Text createTextNode(String data) {
+  404           return document.createTextNode(data);
+  405       }
+  406   
+  407       public Comment createComment(String data) {
+  408           return document.createComment(data);
+  409       }
+  410   
+  411       public CDATASection createCDATASection(String data) throws DOMException {
+  412           return document.createCDATASection(data);
+  413       }
+  414   
+  415       public ProcessingInstruction createProcessingInstruction(
+  416       String target,
+  417       String data)
+  418       throws DOMException {
+  419           return document.createProcessingInstruction(target, data);
+  420       }
+  421   
+  422       public Attr createAttribute(String name) throws DOMException {
+  423           return document.createAttribute(name);
+  424       }
+  425   
+  426       public EntityReference createEntityReference(String name)
+  427       throws DOMException {
+  428           return document.createEntityReference(name);
+  429       }
+  430   
+  431       public NodeList getElementsByTagName(String tagname) {
+  432           handleNewSource();
+  433           return document.getElementsByTagName(tagname);
+  434       }
+  435   
+  436       public org.w3c.dom.Node importNode(
+  437           org.w3c.dom.Node importedNode,
+  438           boolean deep)
+  439           throws DOMException {
+  440           handleNewSource();
+  441           return document.importNode(importedNode, deep);
+  442       }
+  443   
+  444       public Element createElementNS(String namespaceURI, String qualifiedName)
+  445       throws DOMException {
+  446           return document.createElementNS(namespaceURI, qualifiedName);
+  447       }
+  448   
+  449       public Attr createAttributeNS(String namespaceURI, String qualifiedName)
+  450       throws DOMException {
+  451           return document.createAttributeNS(namespaceURI, qualifiedName);
+  452       }
+  453   
+  454       public NodeList getElementsByTagNameNS(
+  455           String namespaceURI,
+  456           String localName) {
+  457           handleNewSource();
+  458           return document.getElementsByTagNameNS(namespaceURI, localName);
+  459       }
+  460   
+  461       public Element getElementById(String elementId) {
+  462           handleNewSource();
+  463           return document.getElementById(elementId);
+  464       }
+  465       public org.w3c.dom.Node appendChild(org.w3c.dom.Node newChild)
+  466           throws DOMException {
+  467           handleNewSource();
+  468           return document.appendChild(newChild);
+  469       }
+  470   
+  471       public org.w3c.dom.Node cloneNode(boolean deep) {
+  472           handleNewSource();
+  473           return document.cloneNode(deep);
+  474       }
+  475   
+  476       protected SOAPPartImpl doCloneNode() {
+  477           handleNewSource();
+  478           SOAPPartImpl newSoapPart = duplicateType();
+  479   
+  480           newSoapPart.headers = MimeHeadersUtil.copy(this.headers);
+  481           newSoapPart.source = this.source;
+  482           return newSoapPart;
+  483       }
+  484   
+  485       public NamedNodeMap getAttributes() {
+  486           return document.getAttributes();
+  487       }
+  488   
+  489       public NodeList getChildNodes() {
+  490           handleNewSource();
+  491           return document.getChildNodes();
+  492       }
+  493   
+  494       public org.w3c.dom.Node getFirstChild() {
+  495           handleNewSource();
+  496           return document.getFirstChild();
+  497       }
+  498   
+  499       public org.w3c.dom.Node getLastChild() {
+  500           handleNewSource();
+  501           return document.getLastChild();
+  502       }
+  503   
+  504       public String getLocalName() {
+  505           return document.getLocalName();
+  506       }
+  507   
+  508       public String getNamespaceURI() {
+  509           return document.getNamespaceURI();
+  510       }
+  511   
+  512       public org.w3c.dom.Node getNextSibling() {
+  513           handleNewSource();
+  514           return document.getNextSibling();
+  515       }
+  516   
+  517       public String getNodeName() {
+  518           return document.getNodeName();
+  519       }
+  520   
+  521       public short getNodeType() {
+  522           return document.getNodeType();
+  523       }
+  524   
+  525       public String getNodeValue() throws DOMException {
+  526           return document.getNodeValue();
+  527       }
+  528   
+  529       public Document getOwnerDocument() {
+  530           return document.getOwnerDocument();
+  531       }
+  532   
+  533       public org.w3c.dom.Node getParentNode() {
+  534           return document.getParentNode();
+  535       }
+  536   
+  537       public String getPrefix() {
+  538           return document.getPrefix();
+  539       }
+  540   
+  541       public org.w3c.dom.Node getPreviousSibling() {
+  542           return document.getPreviousSibling();
+  543       }
+  544   
+  545       public boolean hasAttributes() {
+  546           return document.hasAttributes();
+  547       }
+  548   
+  549       public boolean hasChildNodes() {
+  550           handleNewSource();
+  551           return document.hasChildNodes();
+  552       }
+  553   
+  554       public org.w3c.dom.Node insertBefore(
+  555           org.w3c.dom.Node arg0,
+  556           org.w3c.dom.Node arg1)
+  557           throws DOMException {
+  558           handleNewSource();
+  559           return document.insertBefore(arg0, arg1);
+  560       }
+  561   
+  562       public boolean isSupported(String arg0, String arg1) {
+  563           return document.isSupported(arg0, arg1);
+  564       }
+  565   
+  566       public void normalize() {
+  567           handleNewSource();
+  568           document.normalize();
+  569       }
+  570   
+  571       public org.w3c.dom.Node removeChild(org.w3c.dom.Node arg0)
+  572           throws DOMException {
+  573           handleNewSource();
+  574           return document.removeChild(arg0);
+  575       }
+  576   
+  577       public org.w3c.dom.Node replaceChild(
+  578           org.w3c.dom.Node arg0,
+  579           org.w3c.dom.Node arg1)
+  580           throws DOMException {
+  581           handleNewSource();
+  582           return document.replaceChild(arg0, arg1);
+  583       }
+  584   
+  585       public void setNodeValue(String arg0) throws DOMException {
+  586           document.setNodeValue(arg0);
+  587       }
+  588   
+  589       public void setPrefix(String arg0) throws DOMException {
+  590           document.setPrefix(arg0);
+  591       }
+  592   
+  593       private void handleNewSource() {
+  594           if (sourceWasSet) {
+  595            // There is a newer source use that source.
+  596            try {
+  597                getEnvelope();
+  598            } catch (SOAPException e) {
+  599            }
+  600         }
+  601       }
+  602   
+  603       protected XMLDeclarationParser lookForXmlDecl() throws SOAPException {
+  604           if ((source != null) && (source instanceof StreamSource)) {
+  605   
+  606               Reader reader = null;
+  607   
+  608               InputStream inputStream = ((StreamSource) source).getInputStream();
+  609               if (inputStream != null) {
+  610                   if (getSourceCharsetEncoding() == null) {
+  611                       reader = new InputStreamReader(inputStream);
+  612                   } else {
+  613                       try {
+  614                           reader =
+  615                               new InputStreamReader(
+  616                                   inputStream, getSourceCharsetEncoding());
+  617                       } catch (UnsupportedEncodingException uee) {
+  618                           log.log(
+  619                               Level.SEVERE,
+  620                               "SAAJ0551.soap.unsupported.encoding",
+  621                               new Object[] {getSourceCharsetEncoding()});
+  622                           throw new SOAPExceptionImpl(
+  623                               "Unsupported encoding " + getSourceCharsetEncoding(),
+  624                               uee);
+  625                       }
+  626                   }
+  627               } else {
+  628                   reader = ((StreamSource) source).getReader();
+  629               }
+  630               if (reader != null) {
+  631                   PushbackReader pushbackReader =
+  632                       new PushbackReader(reader, 4096); //some size to unread <?xml ....?>
+  633                   XMLDeclarationParser ev =
+  634                           new XMLDeclarationParser(pushbackReader);
+  635                   try {
+  636                       ev.parse();
+  637                   } catch (Exception e) {
+  638                       log.log(
+  639                           Level.SEVERE,
+  640                           "SAAJ0552.soap.xml.decl.parsing.failed");
+  641                       throw new SOAPExceptionImpl(
+  642                           "XML declaration parsing failed", e);
+  643                   }
+  644                   String xmlDecl = ev.getXmlDeclaration();
+  645                   if ((xmlDecl != null) && (xmlDecl.length() > 0))
+  646                       this.omitXmlDecl = false;
+  647                   return ev;
+  648               }
+  649           }
+  650           return null;
+  651       }
+  652   
+  653       public void setSourceCharsetEncoding(String charset) {
+  654           this.sourceCharsetEncoding = charset;
+  655       }
+  656   
+  657       public org.w3c.dom.Node renameNode(org.w3c.dom.Node n, String namespaceURI, String qualifiedName)
+  658           throws DOMException {
+  659           handleNewSource();
+  660           return document.renameNode(n, namespaceURI, qualifiedName);
+  661       }
+  662   
+  663       public void normalizeDocument() {
+  664           document.normalizeDocument();
+  665       }
+  666   
+  667       public DOMConfiguration getDomConfig() {
+  668           return document.getDomConfig();
+  669       }
+  670   
+  671       public org.w3c.dom.Node adoptNode(org.w3c.dom.Node source) throws DOMException {
+  672           handleNewSource();
+  673           return document.adoptNode(source);
+  674       }
+  675   
+  676       public void setDocumentURI(String documentURI) {
+  677           document.setDocumentURI(documentURI);
+  678       }
+  679   
+  680       public String getDocumentURI() {
+  681           return document.getDocumentURI();
+  682       }
+  683   
+  684       public void  setStrictErrorChecking(boolean strictErrorChecking) {
+  685           document.setStrictErrorChecking(strictErrorChecking);
+  686       }
+  687   
+  688       public String getInputEncoding() {
+  689           return document.getInputEncoding();
+  690       }
+  691   
+  692       public String getXmlEncoding() {
+  693           return document.getXmlEncoding();
+  694       }
+  695   
+  696       public boolean getXmlStandalone() {
+  697           return document.getXmlStandalone();
+  698       }
+  699   
+  700       public void setXmlStandalone(boolean xmlStandalone) throws DOMException {
+  701           document.setXmlStandalone(xmlStandalone);
+  702       }
+  703   
+  704       public String getXmlVersion() {
+  705           return document.getXmlVersion();
+  706       }
+  707   
+  708       public void setXmlVersion(String xmlVersion) throws DOMException {
+  709           document.setXmlVersion(xmlVersion);
+  710       }
+  711   
+  712       public boolean  getStrictErrorChecking() {
+  713           return document.getStrictErrorChecking();
+  714       }
+  715   
+  716       // DOM L3 methods from org.w3c.dom.Node
+  717       public String getBaseURI() {
+  718           return document.getBaseURI();
+  719       }
+  720   
+  721       public short compareDocumentPosition(org.w3c.dom.Node other)
+  722                                 throws DOMException {
+  723           return document.compareDocumentPosition(other);
+  724       }
+  725   
+  726       public String getTextContent()
+  727                         throws DOMException {
+  728           return document.getTextContent();
+  729       }
+  730   
+  731       public void setTextContent(String textContent) throws DOMException {
+  732            document.setTextContent(textContent);
+  733       }
+  734   
+  735       public boolean isSameNode(org.w3c.dom.Node other) {
+  736           return document.isSameNode(other);
+  737       }
+  738   
+  739       public String lookupPrefix(String namespaceURI) {
+  740           return document.lookupPrefix(namespaceURI);
+  741       }
+  742   
+  743       public boolean isDefaultNamespace(String namespaceURI) {
+  744           return document.isDefaultNamespace(namespaceURI);
+  745       }
+  746   
+  747       public String lookupNamespaceURI(String prefix) {
+  748           return document.lookupNamespaceURI(prefix);
+  749       }
+  750   
+  751       public boolean isEqualNode(org.w3c.dom.Node arg) {
+  752           return document.isEqualNode(arg);
+  753       }
+  754   
+  755       public Object getFeature(String feature,
+  756                     String version) {
+  757           return  document.getFeature(feature,version);
+  758       }
+  759   
+  760       public Object setUserData(String key,
+  761                      Object data,
+  762                     UserDataHandler handler) {
+  763           return document.setUserData(key, data, handler);
+  764       }
+  765   
+  766       public Object getUserData(String key) {
+  767           return document.getUserData(key);
+  768       }
+  769   
+  770       public void recycleNode() {
+  771           // Nothing seems to be required to be done here
+  772       }
+  773   
+  774       public String getValue() {
+  775           return null;
+  776       }
+  777   
+  778       public void setValue(String value) {
+  779           log.severe("SAAJ0571.soappart.setValue.not.defined");
+  780           throw new IllegalStateException("Setting value of a soap part is not defined");
+  781       }
+  782   
+  783       public void setParentElement(SOAPElement parent) throws SOAPException {
+  784           log.severe("SAAJ0570.soappart.parent.element.not.defined");
+  785           throw new SOAPExceptionImpl("The parent element of a soap part is not defined");
+  786       }
+  787   
+  788       public SOAPElement getParentElement() {
+  789           return null;
+  790       }
+  791   
+  792       public void detachNode() {
+  793           // Nothing seems to be required to be done here
+  794       }
+  795   
+  796       public String getSourceCharsetEncoding() {
+  797           return sourceCharsetEncoding;
+  798       }
+  799   }
+
+  Save This Page Home » Open-JDK-6.b17-src » com.sun.xml.internal.messaging » saaj » soap » [javadoc | source]
