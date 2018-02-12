@@ -1,0 +1,102 @@
+Property
+
+Default
+
+Description
+
+url	 	
+The endpoint URL - either defined as exact string or as regular expression pattern (see The url parameter)
+
+order	50	
+Defines the order in which parameters are applied (see The order parameter).
+
+name	 	If name is defined and is equal to the conduit bean name, HTTPConduit.getBeanName(), the parameter definitions have highest priority, overwriting and extending other matching configurations.
+tlsClientParameters.secureSocketProtocol	TLS	Protocol Name. Most common examples are "SSL", "TLS" or "TLSv1".
+tlsClientParameters.sslCacheTimeout	JDK default	Sets the SSL Session Cache timeout value for client sessions handled by CXF.
+tlsClientParameters.jsseProvider	 	JSSE provider name.
+tlsClientParameters.disableCNCheck	false	
+Indicates whether that the hostname given in the HTTPS URL will be checked against the service's Common Name (CN) given in its certificate during SOAP client requests - it fails if there is a mismatch.
+
+If set to true (not recommended for production use), such checks will be bypassed. That will allow you, for example, to use a URL such as localhost during development.
+
+tlsClientParameters. useHttpsURLConnectionDefaultHostname- Verifier	false	This attribute specifies if HttpsURLConnection. getDefaultHostnameVerifier() should be used to create HTTPS connections. If 'true', the 'disableCNCheck' configuration parameter is ignored.
+tlsClientParameters. useHttpsURLConnectionDefaultSsl- SocketFactory	false	
+Specifies if HttpsURLConnection. getDefaultSSLSocketFactory() should be used to create HTTPS connections.
+
+If 'true', 'jsseProvider', 'secureSocketProtocol', 'trustManagers', 'keyManagers', 'secureRandom', 'cipherSuites' and 'cipherSuitesFilter' configuration parameters are ignored.
+
+tlsClientParameters.certConstraints. SubjectDNConstraints.combinator	 	SubjectDN certificate constraints specification as combinator.
+tlsClientParameters.certConstraints. SubjectDNConstraints.RegularExpression	 	SubjectDN certificate constraints specification as regular expression.
+tlsClientParameters.certConstraints. IssuerDNConstraints.combinator	 	IssuerDN certificate constraints specification as combinator.
+tlsClientParameters.certConstraints. IssuerDNConstraints.RegularExpression	 	IssuerDN certificate constraints specification as regular expression.
+tlsClientParameters. secureRandomParameters.algorithm	JVM default	algorithm parameter of the SecureRandom specification.
+tlsClientParameters. secureRandomParameters.provider	JVM default	provider parameter of the SecureRandom specification.
+tlsClientParameters.cipherSuitesFilter.include	 	filters the supported CipherSuites, list of CipherSuites that will be supported and used if available.
+tlsClientParameters.cipherSuitesFilter.exclude	 	filters the supported CipherSuites, list of CipherSuites that will be excluded.
+tlsClientParameters.cipherSuites	default sslContext cipher suites	CipherSuites that will be supported.
+tlsClientParameters. trustManagers.provider	JVM default	Provider of the trust manager.
+tlsClientParameters. trustManagers.factoryAlgorithm	JVM default	factory algorithm of the trust manager.
+tlsClientParameters. trustManagers.keyPassword	JVM default	Key password of the trust manager.
+tlsClientParameters. trustManagers.keyStore.type	JVM default	Keystore type of the trust manager.
+tlsClientParameters. trustManagers.keyStore.password	JVM default	Keystore password of the trust manager.
+tlsClientParameters. trustManagers.keyStore.provider	JVM default	Keystore provider of the trust manager.
+tlsClientParameters. trustManagers.keyStore.url	JVM default	Trust Managers URL to hold X509 certificates.
+tlsClientParameters. trustManagers.keyStore.file	JVM default	Trust Managers file to hold X509 certificates.
+tlsClientParameters. trustManagers.keyStore.resource	JVM default	Trust Managers resource to hold X509 certificates.
+tlsClientParameters. keyManagers.provider	JVM default	Provider of the key manager.
+tlsClientParameters. keyManagers.factoryAlgorithm	JVM default	factory algorithm of the key manager.
+tlsClientParameters. keyManagers.keyPassword	JVM default	Key password of the key manager.
+tlsClientParameters. keyManagers.keyStore.type	JVM default	Keystore type of the key manager.
+tlsClientParameters. keyManagers.keyStore.password	JVM default	Keystore password of the key manager.
+tlsClientParameters. keyManagers.keyStore.provider	JVM default	Keystore provider of the key manager.
+tlsClientParameters. keyManagers.keyStore.url	JVM default	Key managers URL to hold X509 certificates.
+tlsClientParameters. keyManagers.keyStore.file	JVM default	Key managers file to hold X509 certificates.
+tlsClientParameters. keyManagers.keyStore.resource	JVM default	Key managers resource to hold X509 certificates.
+authorization.UserName	 	Specifies the UserName parameter for configuring the basic authentication method that the endpoint uses preemptively.
+authorization.Password	 	Specifies the Password parameter for configuring the basic authentication method that the endpoint uses preemptively.
+authorization.Authorization	 	Corresponds to the authentication specified in the SPNEGO/Kerberos login.conf.
+authorization.AuthorizationType	 	Authorization type: "Basic", "Digest" or "Negotiation"
+proxyAuthorization.UserName	 	Specifies the UserName parameter for configuring basic authentication against outgoing HTTP proxy servers.
+proxyAuthorization.Password	 	Specifies the Password parameter for configuring basic authentication against outgoing HTTP proxy servers.
+proxyAuthorization.Authorization	 	Proxy authorization type: "Basic", "Digest" or "Negotiation"
+proxyAuthorization.AuthorizationType	 	Corresponds to the proxy authentication specified in the SPNEGO/Kerberos login.conf.
+client.ConnectionTimeout	30000	Specifies the amount of time, in milliseconds, that the client will attempt to establish a connection before it times out. 0 specifies that the client will continue to attempt to open a connection indefinitely.
+client.ReceiveTimeout	60000	Specifies the amount of time, in milliseconds, that the client will wait for a response before it times out. 0 specifies that the client will wait indefinitely.
+client.AutoRedirect	false	Specifies if the client will automatically follow a server issued redirection. The default is false.
+client.MaxRetransmits	-1	
+Specifies the maximum number of times a client will retransmit a request to satisfy a redirect.
+
+The default of -1 specifies that unlimited retransmissions are allowed.
+
+client.AllowChunking	true	
+Specifies whether the client will send requests using chunking. The default is true which specifies that the client will use chunking when sending requests.
+
+Chunking cannot be used if either
+
+http-conf:basicAuthSupplier is configured to provide credentials preemptively or
+
+AutoRedirect is set to true.
+
+In both cases the value of AllowChunking is ignored and chunking is disallowed. See note about chunking below.
+
+client.ChunkingThreshold	4000	
+Specifies the threshold at which CXF will switch from non-chunking to chunking.
+
+By default, messages less than 4K are buffered and sent non-chunked. Once this threshold is reached, the message is chunked.
+
+client.Connection	Keep-Alive	
+Specifies whether a particular connection is to be kept open or closed after each request/response dialog. There are two valid values:
+
+Keep-Alive specifies that the client wants to keep its connection open after the initial request/response sequence. If the server honors it, the connection is kept open until the consumer closes it.
+
+close specifies that the connection to the server is closed after each request/response sequence.
+
+client.DecoupledEndpoint	 	
+Specifies the URL of a decoupled endpoint for the receipt of responses over a separate server-client connection.
+
+Warning: You must configure both the client and server to use WS-Addressing for the decoupled endpoint to work.
+
+client.ProxyServer	 	Specifies the URL of the proxy server through which requests are routed.
+client.ProxyServerPort	 	Specifies the port number of the proxy server through which requests are routed.
+client.ProxyServerType	HTTP	Specifies the type of proxy server used to route requests. Valid values are: HTTP (default), SOCKS
+client.NonProxyHosts	 	a (possibly empty) list of hosts which should be connected directly and not through the proxy server; it may contain wild card expressions.
