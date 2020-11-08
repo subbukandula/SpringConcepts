@@ -1,1 +1,31 @@
-How to handle data sources in Spring Boot
+How to handle data sources in Spring Boot:
+
+application.properties:
+=====================================
+spring.datasource.url=
+spring.datasource.username=
+spring.datasource.password=
+spring.datasource.driver-class-name=
+
+
+@ConfigurationProperties(prefix = "datasource.postgres")
+@Bean
+@Primary
+public DataSource dataSource() {
+    return DataSourceBuilder
+        .create()
+        .build();
+}
+
+@Bean
+@Primary
+public DataSource dataSource() {
+    return DataSourceBuilder
+        .create()
+        .username("")
+        .password("")
+        .url("")
+        .driverClassName("")
+        .build();
+}
+
