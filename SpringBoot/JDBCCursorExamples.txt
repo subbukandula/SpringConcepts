@@ -1,0 +1,49 @@
+
+StepScope:
+==========
+Using a scope of Step is required in order to use late binding since the bean cannot actually be 
+instantiated until the Step starts, which allows the attributes to be found. Because it is not 
+part of the Spring container by default, the scope must be added explicitly, either by using the 
+batch namespace or by including a bean definition explicitly for the StepScope (but not both)
+
+
+
+select * from table where section = #{jobParameters['section']
+select * from mytable WHERE code = '#{stepExecutionContext[code]}
+
+Spring Batch reading data in the chunk of 5000 and sending it processor and then writer since I set fetchsize to 5000
+
+@Override
+protected ItemReader<Foo> createItemReader() throws Exception {
+  JdbcCursorItemReader<Foo> result = new JdbcCursorItemReader<>();
+  result.setDataSource(dataSource);
+  result.setSql("select ID, NAME, VALUE from T_FOOS");
+  result.setIgnoreWarnings(true);
+  result.setVerifyCursorPosition(true);
+  
+  result.setRowMapper(new FooRowMapper());
+  result.setFetchSize(10);
+  result.setMaxRows(100);
+  result.setQueryTimeout(1000);
+  result.setSaveState(true);
+  return result;
+}
+
+
+
+JdbcCursorItemReader<T> reader = new JdbcCursorItemReader<>();
+reader.setName(this.name);
+reader.setSaveState(this.saveState);
+reader.setPreparedStatementSetter(this.preparedStatementSetter);
+reader.setRowMapper(this.rowMapper);
+reader.setSql(this.sql);
+reader.setCurrentItemCount(this.currentItemCount);
+reader.setDataSource(this.dataSource);
+reader.setDriverSupportsAbsolute(this.driverSupportsAbsolute);
+reader.setFetchSize(this.fetchSize);
+reader.setIgnoreWarnings(this.ignoreWarnings);
+reader.setMaxItemCount(this.maxItemCount);
+reader.setMaxRows(this.maxRows);
+reader.setQueryTimeout(this.queryTimeout);
+reader.setUseSharedExtendedConnection(this.useSharedExtendedConnection);
+reader.setVerifyCursorPosition(this.verifyCursorPosition);
