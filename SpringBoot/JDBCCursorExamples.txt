@@ -1,4 +1,9 @@
 
+Pass properties files from outside of the jar
+=============================================
+java -jar myapp.jar --spring.config.name=application,myapp --spring.config.location=classpath:/data/myapp/config,classpath:/data/myapp/external/config
+
+
 StepScope:
 ==========
 Using a scope of Step is required in order to use late binding since the bean cannot actually be 
