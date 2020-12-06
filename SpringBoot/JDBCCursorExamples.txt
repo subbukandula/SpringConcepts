@@ -3,6 +3,30 @@ Pass properties files from outside of the jar
 =============================================
 java -jar myapp.jar --spring.config.name=application,myapp --spring.config.location=classpath:/data/myapp/config,classpath:/data/myapp/external/config
 
+@Bean
+public ItemStreamReader<Product> reader() {
+    JdbcCursorItemReader<Product> reader = new JdbcCursorItemReader<>();
+    reader.setDataSource(DataSource);
+    reader.setSql(SELECT_QUERY);
+    reader.setPreparedStatementSetter(new InputSetter());
+    reader.setRowMapper(new BeanPropertyRowMapper<>(Product.class));
+    return reader;
+}
+
+public class InputSetter implements PreparedStatementSetter {
+@Override
+public void setValues(PreparedStatement ps) throws SQLException {
+    ps.setString(1, "status");
+    ps.setString(2,"Name");
+
+}
+
+static String readFirstLineFromFile(String path) throws IOException {
+    try (BufferedReader br =
+                   new BufferedReader(new FileReader(path))) {
+        return br.readLine();
+    }
+}
 
 StepScope:
 ==========
@@ -10,8 +34,6 @@ Using a scope of Step is required in order to use late binding since the bean ca
 instantiated until the Step starts, which allows the attributes to be found. Because it is not 
 part of the Spring container by default, the scope must be added explicitly, either by using the 
 batch namespace or by including a bean definition explicitly for the StepScope (but not both)
-
-
 
 select * from table where section = #{jobParameters['section']
 select * from mytable WHERE code = '#{stepExecutionContext[code]}

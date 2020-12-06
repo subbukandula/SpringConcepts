@@ -1,5 +1,9 @@
 https://docs.spring.io/spring-framework/docs/3.0.x/spring-framework-reference/html/jdbc.html
 
+spring.datasource.hikari.enabled=false
+
+SELECT * FROM test WHERE col1 = #{jobParameters['col1']
+
 @Bean
 @Primary
 public JdbcTemplate igniteTemplate() {
@@ -36,9 +40,24 @@ Handle transactions.											X
 Close the connection, statement and resultset.					X	 
 
 
+NamedParameterJdbcTemplate
+==========================
+public List<Dog> listByBreedIdAndGender(long breedId, String gender) {  
+   return jdbcTemplate.query("SELECT * FROM dog_entity WHERE breed__id = :breedId AND gender =:gender", 
+      new MapSqlParameterSource()
+      .addValue("breedId", breedId)
+      .addValue("gender", gender));
+}
 
 
-
+JdbcTemplate
+============
+public List<Dog> listByBreedIdAndGender(long breedId, String gender) {  
+       return jdbcTemplate.query
+          ("SELECT * FROM dog_entity WHERE breed__id = ? AND gender = ?",
+          new Object[] { breedId, gender }, 
+          new DogRowMapper());         
+}
 
 
 ======================================================================================================================

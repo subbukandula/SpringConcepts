@@ -7,6 +7,15 @@ spring.datasource.username=
 spring.datasource.password=
 spring.datasource.driver-class-name=
 
+@EnableAutoConfiguration(exclude = {DataSourceAutoConfiguration.class})
+
+Decrypt Password
+https://www.baeldung.com/spring-boot-configure-data-source-programmatic#configuring-a-datasource-bean
+
+In the same way as common-dbcp2, after adding the dependency we have two options:
+Exclude HikariCP from spring-boot-starter-data-jpa or
+Specifying datasource type to org.apache.tomcat.jdbc.pool.DataSource
+
 
 @ConfigurationProperties(prefix = "datasource.postgres")
 @Bean
@@ -28,4 +37,7 @@ public DataSource dataSource() {
         .driverClassName("")
         .build();
 }
+
+
+
 
