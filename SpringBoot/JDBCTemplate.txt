@@ -19,7 +19,7 @@ public JdbcTemplate dbjdbcTemplate() {
 No.	Method																Description
 1.	public int update(String query)										It is used to INSERT, UPDATE and DELETE records.
 2.	public int update(String query, Object... args)						It is used to INSERT, UPDATE and DELETE records by using the PreparedStatement.
-3.	public void execute(String query)									It is used to execute the DDL (i.e. Data Definition Language) query.
+3.	public void execute(String query)									It is used to execute the DDL (i.e. Data Definition Language) query.-ok 
 4.	public T execute(String sql, PreparedStatementCallbackaction)		It executes the query by using the PreparedStatement callback method.
 5.	public T query(String sql, ResultSetExtractor resultSetExtratObj)	It is used to fetch the records using the ResultSetExtractor interface.
 6.	public List query(String sql, RowMapper rowMapperObj)				It is used to fetch the records using RowMapper.
