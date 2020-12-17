@@ -1,0 +1,62 @@
+
+Apache freemaker
+
+<#if dogNames?size gt 1>
+
+<#if object.attribute??></#if>
+
+<#if (object.attribute)??></#if>
+
+<#if condition>
+...
+<#elseif condition2>
+...
+<#elseif condition3>
+...
+<#else>
+...
+<#/if>
+
+
+
+
+
+
+Objective (Why)
+Migrate monolithic architecture applications into microservices architecture where a bunch of services running in their own separate space and are used to move towards cloud offerings in the API economy
+
+Activites (What)
+1) Identify monolithic architecture applications across each Delivery Team.
+2) Implement significant new functionality as services.
+3) Incrementally extract modules out of the monolith and convert them into services.
+
+Measurement (How)
+
+Benifits (Outcomes)
+
+Easier to Build, Easier to Enhance
+Larger applications can remain mostly unaffected by the failure of a single module.
+High Quality
+Smaller and faster deployments
+Scalability
+
+Alignment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

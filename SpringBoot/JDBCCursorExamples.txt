@@ -1,4 +1,5 @@
 
+
 Pass properties files from outside of the jar
 =============================================
 java -jar myapp.jar --spring.config.name=application,myapp --spring.config.location=classpath:/data/myapp/config,classpath:/data/myapp/external/config
@@ -27,6 +28,7 @@ static String readFirstLineFromFile(String path) throws IOException {
         return br.readLine();
     }
 }
+       
 
 StepScope:
 ==========
