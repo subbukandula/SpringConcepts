@@ -23,3 +23,21 @@ Since we are using Spring Security enabled application, let's configure it to ac
 
 server.ssl.enabled=true
 
+
+server.ssl.key-store-type=JKS
+server.ssl.key-store=classpath:keystore/baeldung.p12
+server.ssl.key-store-password=changeit
+server.ssl.key-alias=baeldung
+security.require-ssl=true
+
+
+
+Check a stand-alone certificate
+	keytool -printcert -v -file mydomain.crt
+Check which certificates are in a Java keystore
+	keytool -list -v -keystore keystore.jks
+Check a particular keystore entry using an alias
+	keytool -list -v -keystore keystore.jks -alias mydomain
+	
+Java will only use the store that is referenced by the -Djavax.net.ssl.trustStore system property to look for certificates to trust when creating SSL connections. Same for keys and -Djavax.net.ssl.keyStore
+
